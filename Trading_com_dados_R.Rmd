@@ -1,0 +1,137 @@
+---
+title: "Trading_Com_Dados_R"
+output: html_document
+---
+
+Excelente material disponibilizado pela Trading com dados.
+Segue o link da playlist:
+https://youtube.com/playlist?list=PLjdDBZW3EmXcIuLGbS3vp53H-DqMZ4IOS
+
+
+```{r}
+
+#Dados de negociação com 1 dia de atraso.
+install.packages('BatchGetSymbols')
+#Possível fazer análise técnica no R.
+install.packages('quantmod')
+#Dados fundamentalistas das ações brasileiras
+install.packages('GetDFPData')
+```
+
+```{r}
+library(BatchGetSymbols)
+library(quantmod)
+library(GetDFPData)
+#Gráficos
+library(ggplot2)
+#Estética
+library(ggthemes)
+#Mudar formato de algumas tabelas
+library(reshape2)
+#Para outras aplicações
+library(plyr)
+
+```
+
+```{r}
+#Início do código
+# Seção 01
+?BatchGetSymbols
+
+acao = "WEGE3.SA" #sempre precisa incluir o "SA".
+#Data Inicial
+di = "2016-01-01"
+#Data Final
+df = Sys.Date()
+#BOVESPA como Benchmark
+benchmark = '^BVSP'
+
+dados_acao = BatchGetSymbols(
+  tickers = acao,
+  first.date = di,
+  last.date = df,
+  bench.ticker = benchmark,
+)
+
+#Não vou precisar de todos os dados, somente df.tickers
+dados_acao = dados_acao$df.tickers
+
+View(dados_acao)
+
+p = ggplot(dados_acao, aes(ref.date, price.adjusted)) + geom_line(color = 'blue')
+p
+
+p + labs(x = 'Data', y = 'Preço Ajustado', title = "Variação do preço da ação", subtitle = "01/2016 até hoje")
+```
+
+```{r}
+#Seção 2
+#Dados de várias ações de uma vez
+
+ibov = GetIbovStocks()
+View(ibov)
+
+ibov$tickersSA = paste(ibov$tickers, ".SA", sep="")
+
+#Pegar os dados de todas as ações que compoem o IBOV:
+
+dados_ibov = BatchGetSymbols(
+  tickers = ibov$tickersSA,
+  first.date = di,
+  last.date = df,
+  bench.ticker = benchmark,
+)
+
+View(dados_ibov)
+#Trouxe em formato de lista. Mudar para dataframe e utilizar somente a segunda parte da lista que tem os dados que nos interessa.
+
+dados_ibov = dados_ibov$df.tickers
+View(dados_ibov)
+```
+
+```{r}
+
+#Manipular a tabela para selecionar uma ação por vez
+
+dados_ibov2 = dlply(dados_ibov, .(ticker), function(x) {rownames(x)=x$row; x$row = NULL;x})
+
+#.ticker indica que vai separar esse df (dados_ibov) em vários utros DF de acordo com a coluna "ticker"
+#function(x) : uma função para separar as linhas de acordo com o ativo de referência, vai dar uma lista de DFs.
+
+View(dados_ibov2)
+
+#Tinham 82 ações no ibov mas ele só retornou 75 DFs, isso pq nem todas as ações tem todos os dados no período que selecionamos 
+#(01/01/2016 até hoje)
+
+# Para selecionar uma ação específica. Por exemplo, AZUL4. Segunda linha do data frame dados_ibov2:
+
+azul4 = dados_ibov2[[2]]
+View(azul4)
+
+```
+
+```{r}
+#Melhor forma de manipular esses datos é colocar em um formato onde os preços de ajuste das ações estejam separadas por coluna, cada 
+#coluna corresponde aos preços de fechamento da ação, e cada linha corresponde a um pregão.'
+
+# Para a ação ZUL4, selecionar somente as coluna 6 (Preço ajustado) e 7 (Data)
+azul4 = dados_ibov2[[2]][c(7,6)] #mudando a ordem para a coluna data vir primeiro.
+View(azul4)
+
+#Mudar os nomes das colunas: ref.date passará a se chamar "Data" e price.adjusted passará a se chamar "Preços" com o ticker da ação.
+colnames(azul4) = c("Data", paste("Preços", dados_ibov2[[2]][1,8]))
+
+#Criar um looping (for) para fazer os dois comandos anteriores para todas as ações de dados_ibov2:
+
+acao = dados_ibov2[[1]][c(7,6)]
+colnames(acao) = c("Data", paste("Preços", dados_ibov2[[1]][1,8]))
+
+for(i in 2:75){
+  novaacao = dados_ibov2[[i]][c(7,6)]
+  colnames(novaacao) = c("Data", paste("Preços", dados_ibov2[[i]][1,8]))
+  acao = merge(acao, novaacao, by = "Data") #fazendo um "join" entre acao, novaacao e usando a coluna Data como referência)
+}
+View(acao)
+```
+
+Próximos passos: Criar carteiras e comparar com IBOV
