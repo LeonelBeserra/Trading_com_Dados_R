@@ -134,4 +134,119 @@ for(i in 2:75){
 View(acao)
 ```
 
-Próximos passos: Criar carteiras e comparar com IBOV
+
+Gerando gráficos com várias ações
+Ações do setor bancário:
+
+```{r}
+f = ggplot()+
+  geom_line(data=acao, aes(x = Data, y=acao$'Preços BBAS3.SA', color="Banco do Brasil" ))+
+  geom_line(data=acao, aes(x = Data, y=acao$'Preços BBDC4.SA', color="Bradesco" ))+
+  geom_line(data=acao, aes(x = Data, y=acao$'Preços ITUB4.SA', color="Itaú Unibanco" ))+
+  geom_line(data=acao, aes(x = Data, y=acao$'Preços BBAS3.SA', color="Banco do Brasil" ))+
+  geom_line(data=acao, aes(x = Data, y=acao$'Preços SANB11.SA', color="Santander" ))+
+  xlab("Data")+
+  ylab("Preço")
+
+f$labels$colour = "Bancos"
+
+print(f)
+```
+
+Seção 3:
+Normalizar preço das ações.
+
+```{r}
+#Utilizar índices de referência do mercado financeiro
+
+IBOV = BatchGetSymbols(
+  tickers = '^BVSP',
+  first.date = di,
+  last.date = df,
+  bench.ticker = benchmark,
+)
+
+IBOV = IBOV$df.tickers
+
+View(IBOV)
+
+SP500 = BatchGetSymbols(
+  tickers = '^GSPC',
+  first.date = di,
+  last.date = df,
+  bench.ticker = '^GSPC',
+)
+
+SP500 = SP500$df.tickers
+
+View(SP500)
+
+```
+
+
+```{r}
+#Mudando o nome das colunas do IBOV para ficar no mesmo formato das ações:
+colnames(IBOV)[6] = 'IBOV'
+colnames(IBOV)[7] = 'Data'
+
+#Mudando o nome das colunas do SP500 para ficar no mesmo formato das ações:
+colnames(SP500)[6] = 'SP500'
+colnames(SP500)[7] = 'Data'
+
+#Selecionando somente as colunas com referentes a Data e valor ajustado dos índices:
+
+IBOV = IBOV[,c(7,6)]
+SP500 = SP500[,c(7,6)]
+
+```
+
+
+```{r}
+#Joint de SP500 e IBOV
+ibov_sp500=merge(IBOV, SP500, by = 'Data')
+View(ibov_sp500)
+
+#Joint de ibov_sp500 e IBOV
+total = merge(ibov_sp500, acao, by = 'Data')
+View(total)
+
+```
+
+
+```{r}
+#Primeiramente vamos deixar a coluna Data de fora
+normalizado = total[,-c(1)]
+View(normalizado)
+
+#A idéia da normalização é que todos iniciem do mesmo lugar, no caso o valor 1, para isso vamos pegar o primeiro valor da coluna de
+#cada ação e dividir por todos os outros valores da coluna.
+# Para a normalização vamos usar a função lapply que tem uma função que já vai aplicar a função de normalização em todas as colunas.
+novo_total = data.frame(lapply(normalizado, function(x) x/x[1]))
+View(novo_total)
+
+#Retornar a coluna Data. Usando a coluna Data do dataframe 'total'.
+
+novo_total$Data = total$Data
+
+#Plotar o gráfico:
+
+g = ggplot()+
+  geom_line(data=novo_total, aes(x = Data, y=novo_total$'Preços.BBAS3.SA', color="Banco do Brasil" ))+
+  geom_line(data=novo_total, aes(x = Data, y=novo_total$'Preços.BBDC4.SA', color="Bradesco" ))+
+  geom_line(data=novo_total, aes(x = Data, y=novo_total$'Preços.ITUB4.SA', color="Itaú Unibanco" ))+
+  geom_line(data=novo_total, aes(x = Data, y=novo_total$'Preços.BBAS3.SA', color="Banco do Brasil" ))+
+  geom_line(data=novo_total, aes(x = Data, y=novo_total$'Preços.SANB11.SA', color="Santander" ))+
+  geom_line(data=novo_total, aes(x = Data, y=novo_total$IBOV, color="IBOV" ))+
+  geom_line(data=novo_total, aes(x = Data, y=novo_total$SP500, color="SP&500" ))+
+  xlab("Data")+
+  ylab("Preço")
+
+g$labels$colour = "Bancos"
+
+print(g)
+
+
+```
+
+
+```{r}
