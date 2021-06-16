@@ -250,3 +250,34 @@ print(g)
 
 
 ```{r}
+# Plotar todas as ações do índice Bovespa + IBOV + SP500
+
+# Transformar os dados em um dataframe de 3 colunas: Data, Series e Value. Series conterá o nome das ações e value o preço de ajuste da data em questão.
+
+df_todas = melt(novo_total, id.vars = "Data", variable.name = 'Series')
+View(df_todas)
+
+ggplot(df_todas, aes(Data, value)) + geom_line(aes(color=Series)) #Cada vez que encontrar um Series diferente, vai usar uma cor diferente.
+
+```
+Claramente o gráfico não fica nada visual.
+
+```{r}
+#Selecionar algumas ações somente, por exemplo, as duas primeiras ações + IBOV + SP500:
+
+novo_total2 = novo_total[, c(1:4, 78)]
+View(novo_total2)
+
+df4 = melt(novo_total2, id.vars = "Data", variable.name = 'Series')
+View(df4)
+ggplot(df4, aes(Data, value))+geom_line(aes(color=Series))
+```
+
+
+```{r}
+#Visualizar em plots separados:
+ggplot(df4, aes(Data, value)) + geom_line() + facet_grid(Series~.)
+```
+
+
+```{r}
