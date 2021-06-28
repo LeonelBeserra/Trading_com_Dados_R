@@ -114,7 +114,7 @@ View(azul4)
 #Melhor forma de manipular esses datos é colocar em um formato onde os preços de ajuste das ações estejam separadas por coluna, cada 
 #coluna corresponde aos preços de fechamento da ação, e cada linha corresponde a um pregão.'
 
-# Para a ação ZUL4, selecionar somente as coluna 6 (Preço ajustado) e 7 (Data)
+# Para a ação AZUL4, selecionar somente as coluna 6 (Preço ajustado) e 7 (Data)
 azul4 = dados_ibov2[[2]][c(7,6)] #mudando a ordem para a coluna data vir primeiro.
 View(azul4)
 
@@ -277,6 +277,199 @@ ggplot(df4, aes(Data, value))+geom_line(aes(color=Series))
 ```{r}
 #Visualizar em plots separados:
 ggplot(df4, aes(Data, value)) + geom_line() + facet_grid(Series~.)
+```
+
+Seção 4: Calculando correlação e construindo nosso próprio protifólio:
+
+```{r}
+#usando o objeto normalizado pq está sem a data
+library(corrplot)
+correlacoes = cor(normalizado, use='complete.obs', method = 'spearman')
+View(correlacoes)
+
+library(corrplot)
+
+corrplot(correlacoes, number.cex = 0.001, number.font = 5)
+
+#Selecionando algumas ações:
+
+tabela01 = normalizado[,c(1,2,15:25)] # 1 é IBOV, 2 é SP500 e as ações do intervalo de 15 até 25.
+
+cortabela01 = cor(tabela01, use='complete.obs', method = 'spearman')
+corrplot(cortabela01, number.cex = 0.001, number.font = 5)
+
+#Incluir o valor da correlação:
+cortabela01 = cor(tabela01, use='complete.obs', method = 'spearman')
+corrplot(cortabela01, number.cex = 1, number.font = 1, method = "number")
+
+#Deixando a visualização mais sofisticada:
+corrplot(cortabela01, number.cex = 1, number.font = 1, method = "number", type = "lower")
+
+#Selecionando as ações pelo nome:
+#Plotando o nome de todas as ações:
+colnames(normalizado)
+
+
+tabela2 = normalizado[, colnames(normalizado) %in% c("IBOV", "SP500", "Preços WEGE3.SA", "Preços PETR3.SA", "Preços ITSA4.SA", "Preços B3SA3.SA")]
+cortabela2 = cor(tabela2, use='complete.obs', method = 'spearman')
+corrplot(cortabela2, number.cex = 1, number.font = 1, method = "number", type = "lower")
+
+```
+
+
+```{r}
+#Construção do portifólio:
+# criar uma nova coluna:
+
+novo_total$carteira = 0.2*novo_total$Preços.ABEV3.SA + 
+  0.15*novo_total$Preços.B3SA3.SA + 
+  0.15*novo_total$Preços.EZTC3.SA + 
+  0.3*novo_total$Preços.WEGE3.SA + 
+  0.2*novo_total$Preços.MGLU3.SA
+
+h = ggplot()+
+  geom_line(data=novo_total, aes(x = Data, y=novo_total$'carteira', color="Meu portifólio" ))+
+  geom_line(data=novo_total, aes(x = Data, y=novo_total$'Preços.ABEV3.SA', color="Ambev" ))+
+  geom_line(data=novo_total, aes(x = Data, y=novo_total$'Preços.B3SA3.SA', color="B3" ))+
+  geom_line(data=novo_total, aes(x = Data, y=novo_total$'Preços.EZTC3.SA', color="Eztec" ))+
+  geom_line(data=novo_total, aes(x = Data, y=novo_total$'Preços.WEGE3.SA', color="Weg" ))+
+  geom_line(data=novo_total, aes(x = Data, y=novo_total$'Preços.MGLU3.SA', color="Magazine Luiza" ))+
+  geom_line(data=novo_total, aes(x = Data, y=novo_total$IBOV, color="IBOV" ))+
+  geom_line(data=novo_total, aes(x = Data, y=novo_total$SP500, color="SP&500" ))+
+  xlab("Data")+
+  ylab("Preço")
+
+g$labels$colour = "Ativos versus portifólio"
+
+print(h)
+
+# Plotando somento portifólio, IBOV e SP500 para comparação:
+
+mp = ggplot()+
+  geom_line(data=novo_total, aes(x = Data, y=novo_total$'carteira', color="Meu portifólio" ))+
+  geom_line(data=novo_total, aes(x = Data, y=novo_total$IBOV, color="IBOV" ))+
+  geom_line(data=novo_total, aes(x = Data, y=novo_total$SP500, color="SP&500" ))+
+  xlab("Data")+
+  ylab("Preço")
+
+g$labels$colour = "Portifólio versus benchmark"
+
+print(mp)
+```
+
+
+```{r}
+# Verificando a correlação entre os ativos, portifólio e benchmarks:
+tabela3 = novo_total[, colnames(novo_total) %in% c("IBOV", "SP500","carteira", "Preços.ABEV3.SA", "Preços.B3SA3.SA", "Preços.EZTC3.SA", "Preços.WEGE3.SA", "Preços.MGLU3.SA")]
+cortabela3 = cor(tabela3, use='complete.obs', method = 'spearman')
+corrplot(cortabela3, number.cex = 1, number.font = 1, method = "number", type = "lower")
+
+
+```
+
+Seção 5: utilizando a biblioteca QUANTMOD:
+
+```{r}
+library(quantmod)
+#quantmod tbm dá para pegar dados das ações
+?getSymbols
+
+#Não precisa criar nonme para o objeto, o R já faz isso automaticamente. Lá no Data aparece um obejto AAPL
+getSymbols(Symbols = "AAPL", from = '2020-01-01', src = 'yahoo')
+
+#Caso queira dar um nome, tem que colocar auto.assign = FALSE:
+dados_apple = getSymbols(Symbols = "AAPL", from = '2020-01-01', src = 'yahoo', auto.assign = FALSE)
+
+#Criar um gráfico de candle:
+chart_Series(dados_apple)
+
+#Para ações brasileiras, WEGE3, por exemplo:
+dados_weg = getSymbols(Symbols = "WEGE3.SA", from = '2020-01-01', src = 'yahoo', auto.assign = FALSE) #semprelembrar de colocar ".SA" depois do ticker da ação.
+
+chart_Series(dados_weg)
+```
+
+
+```{r}
+#Criar um gráfico de linhas de Weg:
+ggplot(dados_weg, aes(index(dados_weg), dados_weg[,6])) + geom_line(color= 'darkblue') + ggtitle("Cotação de Weg desde 01/01/2020")
+#as datas estão como índice nos dados, então tem que usar esse comando para trazer as datas como dados: aes(index(dados_weg)
+#utilizando o preço ajustado:dados_weg[,6]) 
+```
+
+
+```{r}
+#Médias móveis 10 e 30 períodos:
+
+#Se não quiser usar um período muito grande tempo, pode usar o comando subset para pegar um intervalo específico, nesse caso a partir de 20/02/2020:
+
+dados_weg_filtrado = subset(dados_weg, index(dados_weg)>='2020-02-20')
+
+#Para criação das médias móveis vamos usar o comando rollmean:
+?rollmean
+
+MMWEG_10=rollmean(dados_weg_filtrado[,6], 10, fill = list(NA, NULL, NA), align='right')
+MMWEG_30=rollmean(dados_weg_filtrado[,6], 30, fill = list(NA, NULL, NA), align='right')
+#coluna com preço ajustado (6) e 10 períodos: dados_weg_filtrado[,6], 10,
+#fill = list(NA, NULL, NA) para indicar o que fazer se encontrar um elemento NA
+
+#Criar colunas com os dados das médias móveis
+dados_weg_filtrado$MMWEG_10 = MMWEG_10
+dados_weg_filtrado$MMWEG_30 = MMWEG_30
+
+ggplot(dados_weg_filtrado, aes(index(dados_weg_filtrado))) +
+  geom_line(aes(y=dados_weg_filtrado[,6], color = 'Preço de WEGE3'))+
+  geom_line(aes(y=dados_weg_filtrado$MMWEG_10, color = 'MM10'))+
+  geom_line(aes(y=dados_weg_filtrado$MMWEG_30, color = 'MM30'))+
+  xlab("Data") + ylab("Preço Ajustado")
+
+
+```
+
+
+```{r}
+#Calculando retornos:
+
+#Diários
+dailyReturn(dados_weg_filtrado)
+
+#Semanal
+weeklyReturn(dados_weg_filtrado)
+
+#Mensal
+monthlyReturn(dados_weg_filtrado)
+
+#Anual
+yearlyReturn(dados_weg_filtrado)
+```
+
+
+```{r}
+#Calculando o risco através do desvio padrão:
+sd(na.omit(dados_weg_filtrado$WEGE3.SA.Adjusted)) #omitindo os NAs
+
+```
+
+Seção 06 - trabalhando com dados fundamentalistas
+```{r}
+library(GetDFPData)
+#As informações divulgadas pelas empresas não seguem exatamente um padrão, por isso é meljor trabalhar com datas de curtos períodos de tempos por vez
+empresas = gdfpd.get.info.companies()
+
+#Algumas empresas tem vários CNPJs, importante saber exatamente de qual empresas estamos pegando os dados
+
+View(empresas)
+
+company = "RUMO MALHA PAULISTA S.A."
+di = '2019-01-01'
+df = '2020-01-01'
+type.export = "xlsx"
+
+dados_fund_RAIL3 = gdfpd.GetDFPData(name.companies = company,
+                                    first.date = di,
+                                    last.date = df)
+View(dados_fund_RAIL3)
+
 ```
 
 
